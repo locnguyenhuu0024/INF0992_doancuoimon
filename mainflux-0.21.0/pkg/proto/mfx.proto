@@ -1,0 +1,158 @@
+// Copyright (c) Mainflux
+// SPDX-License-Identifier: Apache-2.0
+
+syntax = "proto3";
+
+package protomfx;
+
+import "google/protobuf/empty.proto";
+
+message Message {
+    string  channel   = 1;
+    string  subtopic  = 2;
+    string  publisher = 3;
+    string  protocol  = 4;
+    bytes   payload   = 5;
+    int64   created   = 6; // Unix timestamp in nanoseconds
+    Profile profile   = 7;
+}
+
+service ThingsService {
+    rpc GetConnByKey(ConnByKeyReq) returns (ConnByKeyRes) {}
+    rpc IsChannelOwner(ChannelOwnerReq) returns (google.protobuf.Empty) {}
+    rpc CanAccessGroup(AccessGroupReq) returns (google.protobuf.Empty) {}
+    rpc Identify(Token) returns (ThingID) {}
+    rpc GetGroupsByIDs(GroupsReq) returns (GroupsRes) {}
+}
+
+service UsersService {
+    rpc GetUsersByIDs(UsersByIDsReq) returns (UsersRes) {}
+    rpc GetUsersByEmails(UsersByEmailsReq) returns (UsersRes) {}
+}
+
+service AuthService {
+    rpc Issue(IssueReq) returns (Token) {}
+    rpc Identify(Token) returns (UserIdentity) {}
+    rpc Authorize(AuthorizeReq) returns (google.protobuf.Empty) {}
+    rpc AssignRole(AssignRoleReq) returns (google.protobuf.Empty) {}
+    rpc RetrieveRole(RetrieveRoleReq) returns (RetrieveRoleRes) {}
+}
+
+message ConnByKeyReq {
+    string key  = 1;
+}
+
+message ConnByKeyRes {
+    string  channelID = 1;
+    string  thingID   = 2;
+    Profile profile   = 3;
+}
+
+message Profile {
+    string      contentType = 1;
+    bool        write       = 2;
+    string      webhookID   = 3;
+    string      smtpID      = 4;
+    string      smppID      = 5;
+    Transformer transformer = 6;
+}
+
+message Transformer {
+    repeated string valueFields = 1;
+    string timeField            = 2;
+    string timeFormat           = 3;
+    string timeLocation         = 4;
+}
+
+message ChannelOwnerReq {
+    string token  = 1;
+    string chanID = 2;
+}
+
+message AccessGroupReq {
+    string token   = 1;
+    string groupID = 2;
+    string action  = 3;
+}
+
+message ThingID {
+    string value = 1;
+}
+
+message ChannelID {
+    string value = 1;
+}
+
+// If a token is not carrying any information itself, the type
+// field can be used to determine how to validate the token.
+// Also, different tokens can be encoded in different ways.
+message Token {
+    string value = 1;
+}
+
+message UserIdentity {
+    string id    = 1;
+    string email = 2;
+}
+
+message IssueReq {
+    string id    = 1;
+    string email = 2;
+    uint32 type  = 3;
+}
+
+message AuthorizeReq {
+    string token   = 1;
+    string object  = 2;
+    string subject = 3;
+    string action  = 4;
+}
+
+message AuthorizeRes {
+    bool authorized = 1;
+}
+
+message User {
+	string id       = 1;
+	string email    = 2;
+	string status   = 3;
+}
+
+message UsersByEmailsReq {
+    repeated string emails = 1;
+}
+
+message UsersByIDsReq {
+    repeated string ids = 1;
+}
+
+message UsersRes {
+    repeated User users = 1;
+}
+
+message Group {
+    string id          = 1;
+    string ownerID     = 2;
+    string name        = 3;
+    string description = 4;
+}
+
+message GroupsReq {
+    repeated string ids = 1;
+}
+
+message GroupsRes {
+    repeated Group groups = 1;
+}
+
+message AssignRoleReq {
+    string id = 1;
+    string role = 2;
+}
+
+message RetrieveRoleReq {
+    string id = 1;
+}
+message RetrieveRoleRes {
+    string role = 1;
+}
