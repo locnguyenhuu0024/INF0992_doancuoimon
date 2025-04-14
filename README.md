@@ -1,1 +1,1 @@
-docker-compose -f mainflux-0.25.0/docker/docker-compose.yml up
+docker-compose -f mainflux/docker/docker-compose.yml up -d

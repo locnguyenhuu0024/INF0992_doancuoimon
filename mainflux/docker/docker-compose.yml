@@ -140,8 +140,6 @@ services:
       - mainfluxlabs-base-net
     volumes:
       - mainfluxlabs-users-db-volume:/var/lib/postgresql/data
-    ports:
-      - "5440:5432"
 
   users:
     image: mainfluxlabs/users:${MF_RELEASE_TAG}
@@ -386,7 +384,7 @@ services:
     image: postgres:13.3-alpine
     container_name: mainfluxlabs-postgres
     ports:
-      - "5433:5432"
+      - "5432:5432"
     restart: on-failure
     environment:
       POSTGRES_USER: ${MF_POSTGRES_WRITER_DB_USER}
@@ -570,21 +568,6 @@ services:
       - ./mosquitto.conf:/mosquitto/config/mosquitto.conf
       - mosquitto-data:/mosquitto/data
       - mosquitto-log:/mosquitto/log  
-    networks:
-      - mainfluxlabs-base-net
-  mqtt_subscriber_service:
-    build: ./mqtt_subscriber_service  # Sử dụng đường dẫn chính xác
-    restart: on-failure
-    container_name: mqtt_subscriber_service
-    depends_on:
-      - mosquitto  # Đảm bảo dịch vụ MQTT broker của Mainflux đã chạy trước
-      - mqtt-db  # Nếu bạn đang sử dụng PostgreSQL cùng với Mainflux
-
-    environment:
-      - NODE_ENV=production
-      - PGUSER=mainflux
-      - PGPASSWORD=mainflux
-      - PGDATABASE=subscriptions
     networks:
       - mainfluxlabs-base-net
 

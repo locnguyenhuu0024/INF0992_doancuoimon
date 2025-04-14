@@ -1,0 +1,6 @@
+# Nodejs app
+*.env
+node_modules
+
+# NodeMCU
+config.h

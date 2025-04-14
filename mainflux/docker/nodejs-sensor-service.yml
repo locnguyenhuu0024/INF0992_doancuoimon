@@ -1,0 +1,31 @@
+services:
+  nodejs-sensor-subscriber:
+    build: 
+      context: ../../nodejs-app
+      dockerfile: Dockerfile
+    container_name: nodejs-sensor-subscriber
+    restart: on-failure
+    environment:
+      NODE_ENV: production
+      # PostgreSQL Configuration
+      PGUSER: ${MF_MQTT_ADAPTER_DB_USER}
+      PGHOST: mqtt-db
+      PGDATABASE: ${MF_MQTT_ADAPTER_DB}
+      PGPASSWORD: ${MF_MQTT_ADAPTER_DB_PASS}
+      PGPORT: 5432
+      # MQTT Configuration
+      MQTT_BROKER_URL: ${MF_SENSOR_MQTT_BROKER_URL}
+      MQTT_PORT: ${MF_SENSOR_MQTT_PORT}
+      MQTT_CLIENT_ID: ${MF_SENSOR_MQTT_CLIENT_ID}
+      MQTT_USERNAME: ${MF_SENSOR_MQTT_USERNAME}
+      MQTT_PASSWORD: ${MF_SENSOR_MQTT_PASSWORD}
+      MQTT_TOPIC: ${MF_SENSOR_MQTT_TOPIC}
+      MQTT_QOS: ${MF_SENSOR_MQTT_QOS}
+    networks:
+      - mainfluxlabs-base-net
+    depends_on:
+      - mosquitto
+      - mqtt-db
+
+volumes:
+  sensor-data-volume: 

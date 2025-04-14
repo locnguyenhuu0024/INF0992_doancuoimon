@@ -1,0 +1,52 @@
+version: '3.8'
+
+services:
+  nodejs-sensor-subscriber:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: nodejs-sensor-subscriber
+    restart: on-failure
+    environment:
+      NODE_ENV: production
+      # PostgreSQL Configuration
+      PGUSER: ${PGUSER:-postgres}
+      PGHOST: ${PGHOST:-postgres}
+      PGDATABASE: ${PGDATABASE:-sensordata}
+      PGPASSWORD: ${PGPASSWORD:-postgres}
+      PGPORT: ${PGPORT:-5432}
+      # MQTT Configuration
+      MQTT_BROKER_URL: mqtt://mosquitto
+      MQTT_PORT: 1884
+      MQTT_CLIENT_ID: nodejs_subscriber_client
+      MQTT_USERNAME: ""
+      MQTT_PASSWORD: ""
+      MQTT_TOPIC: esp8266/sensor_data
+      MQTT_QOS: 0
+    networks:
+      - mainfluxlabs-base-net
+    depends_on:
+      - postgres
+      - mosquitto
+  
+  postgres:
+    image: postgres:13-alpine
+    container_name: sensor-postgres
+    restart: on-failure
+    environment:
+      POSTGRES_USER: ${PGUSER:-postgres}
+      POSTGRES_PASSWORD: ${PGPASSWORD:-postgres}
+      POSTGRES_DB: ${PGDATABASE:-sensordata}
+    volumes:
+      - sensor-data-volume:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"
+    networks:
+      - mainfluxlabs-base-net
+
+networks:
+  mainfluxlabs-base-net:
+    external: true
+
+volumes:
+  sensor-data-volume: 
