@@ -127,6 +127,29 @@ docker-compose up --build -d
 4. Chọn board ESP8266 và cổng COM phù hợp
 5. Nạp code lên NodeMCU
 
+### Cấu hình DB cho Grafana
+
+1. Truy cập Grafana bằng địa chỉ http://localhost:3001
+2. Đăng nhập tài khoản/mật khẩu: mainflux/mainflux
+3. Sau khi đăng nhập, vào ô tìm kiếm trên cùng, nhập "Data Source" và chọn kết quả như tên 
+4. Chọn "Add new data source" -> Tìm "postgresql" -> nhập thông tin host url "localhost:5441", nếu không được hãy dùng ip của bạn.
+5. Database name nhập "subscriptions"
+6. Cuộn xuống dưới cùng chọn save&test
+
+### Cấu hình Dash cho Grafana
+
+1. Vẫn ở địa chỉ http://localhost:3001
+2. Sau khi đăng nhập, vào ô tìm kiếm trên cùng, nhập "Dashboards" và chọn kết quả như tên 
+3. Chọn New -> New dashboard bên góc trên bên phải -> chọn Add visualization -> Chọn DB PostgreSQL vừa mói thêm ở trên
+4. Cuộn xuống chọn Order (kế bên nút Preview đang mở)
+5. Chỗ Table chọn sensor_data
+6. Column chọn gas_volumn
+7. Cuộn xuống Order by -> chọn created_at -> chọn Sort by desc... (mũi tên từ trên xuống) -> limit 1
+8. Ở góc trên bên phải, dưới nút save có 1 chỗ để chọn widget -> chọn Gauge
+9. Ở khu vực bên phải cuộn xuống dưới cùng, chỗ Thresholds sửa lại 400 (hoặc mức khí gas bạn tự đặt)
+10. Bấm Apply
+11. Bấm icon nút save để lưu dashboard.
+
 ## Cấu trúc dự án
 
 - `nodejs-app/` - Ứng dụng NodeJS xử lý dữ liệu cảm biến và gửi cảnh báo
