@@ -1,6 +1,7 @@
 # Nodejs app
-*.env
+.env
 node_modules
 
 # NodeMCU
 config.h
+.DS_Store

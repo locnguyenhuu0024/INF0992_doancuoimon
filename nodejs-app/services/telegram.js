@@ -9,13 +9,16 @@ dotenv.config();
 const botToken = process.env.TELEGRAM_BOT_TOKEN;
 const chatId = process.env.TELEGRAM_CHAT_ID;
 const gasThreshold = parseInt(process.env.GAS_THRESHOLD || '600', 10);
+const tempThreshold = parseInt(process.env.TEMP_THRESHOLD || '45', 10);
 const reportInterval = parseInt(process.env.TELEGRAM_REPORT_INTERVAL || '300000', 10); // 5 minutes in milliseconds
 
 // Create a bot instance
 let bot = null;
 
 // Variables to manage status and alerts
-let isAlertActive = false;
+let isGasAlertActive = false;
+let isTempAlertActive = false;
+let isExplosionRiskAlertActive = false;
 let lastReportTime = 0;
 let lastDataPoint = null;
 let messageFailCount = 0;
@@ -56,7 +59,7 @@ function initBot() {
  */
 async function validateChatId() {
   try {
-    const result = await sendMessage('🤖 Gas monitoring system is now online.', false, true);
+    const result = await sendMessage('🤖 Hệ thống giám sát khí gas đang hoạt động.', false, true);
     if (result) {
       console.log('Successfully sent test message to chat ID:', chatId);
     }
@@ -141,18 +144,46 @@ async function processSensorData(data) {
   
   lastDataPoint = data;
   
-  // Check if gas level exceeds threshold
-  if (data.gas_volume > gasThreshold) {
-    // Only send a new alert if we don't have an active alert or if it's been more than 2 minutes
-    if (!isAlertActive) {
-      isAlertActive = true;
-      await sendUrgentGasAlert(data);
+  const isGasLevelHigh = data.gas_volume > gasThreshold;
+  const isTempHigh = data.temperature > tempThreshold;
+  const isExplosionRisk = isGasLevelHigh && isTempHigh;
+  
+  // Handle explosion risk (highest priority)
+  if (isExplosionRisk) {
+    if (!isExplosionRiskAlertActive) {
+      isExplosionRiskAlertActive = true;
+      await sendExplosionRiskAlert(data);
     }
+    // Reset other alert flags since explosion risk takes precedence
+    isGasAlertActive = true;
+    isTempAlertActive = true;
   } else {
-    // If gas level is back to normal and we had an active alert, send recovery message
-    if (isAlertActive) {
-      isAlertActive = false;
-      await sendGasNormalizedAlert(data);
+    // If explosion risk resolved, send recovery message
+    if (isExplosionRiskAlertActive) {
+      isExplosionRiskAlertActive = false;
+      await sendRiskNormalizedAlert(data, 'explosion risk');
+    }
+    
+    // Handle gas alert
+    if (isGasLevelHigh) {
+      if (!isGasAlertActive) {
+        isGasAlertActive = true;
+        await sendGasAlert(data);
+      }
+    } else if (isGasAlertActive) {
+      isGasAlertActive = false;
+      await sendRiskNormalizedAlert(data, 'gas');
+    }
+    
+    // Handle temperature alert
+    if (isTempHigh) {
+      if (!isTempAlertActive) {
+        isTempAlertActive = true;
+        await sendHighTemperatureAlert(data);
+      }
+    } else if (isTempAlertActive) {
+      isTempAlertActive = false;
+      await sendRiskNormalizedAlert(data, 'temperature');
     }
   }
   
@@ -165,31 +196,93 @@ async function processSensorData(data) {
 }
 
 /**
- * Send an urgent alert when gas level exceeds threshold
+ * Send a gas leak alert
  * @param {Object} data - The sensor data
  */
-async function sendUrgentGasAlert(data) {
-  const message = `Detected dangerous gas level: <b>${data.gas_volume}</b>
-Temperature: ${data.temperature}°C
-Humidity: ${data.humidity}%
-Location: ${data.type}
-Time: ${new Date().toLocaleString()}
+async function sendGasAlert(data) {
+  const message = `⚠️ PHÁT HIỆN RÒ RỈ KHÍ GAS ⚠️
 
-Please take immediate action!`;
+Nồng độ gas: <b>${data.gas_volume}</b>
+Nhiệt độ: ${data.temperature}°C
+Độ ẩm: ${data.humidity}%
+Vị trí: ${data.type}
+Thời gian: ${new Date().toLocaleString()}
+
+Vui lòng kiểm tra nguồn gas và đảm bảo thông gió!`;
 
   await sendMessage(message, true);
 }
 
 /**
- * Send an alert when gas level returns to normal
+ * Send a high temperature alert
  * @param {Object} data - The sensor data
  */
-async function sendGasNormalizedAlert(data) {
-  const message = `✅ Gas level has returned to normal: <b>${data.gas_volume}</b>
-Temperature: ${data.temperature}°C
-Humidity: ${data.humidity}%
-Location: ${data.type}
-Time: ${new Date().toLocaleString()}`;
+async function sendHighTemperatureAlert(data) {
+  const message = `🔥 CẢNH BÁO NHIỆT ĐỘ CAO 🔥
+
+Nhiệt độ: <b>${data.temperature}°C</b>
+Nồng độ gas: ${data.gas_volume}
+Độ ẩm: ${data.humidity}%
+Vị trí: ${data.type}
+Thời gian: ${new Date().toLocaleString()}
+
+Vui lòng kiểm tra nguồn nhiệt và đảm bảo làm mát!`;
+
+  await sendMessage(message, true);
+}
+
+/**
+ * Send an explosion risk alert when both gas and temperature are high
+ * @param {Object} data - The sensor data
+ */
+async function sendExplosionRiskAlert(data) {
+  const message = `🚨 KHẨN CẤP: NGUY CƠ CHÁY NỔ 🚨
+
+PHÁT HIỆN ĐIỀU KIỆN NGUY HIỂM:
+- Nồng độ gas: <b>${data.gas_volume}</b>
+- Nhiệt độ: <b>${data.temperature}°C</b>
+Độ ẩm: ${data.humidity}%
+Vị trí: ${data.type}
+Thời gian: ${new Date().toLocaleString()}
+
+YÊU CẦU HÀNH ĐỘNG NGAY LẬP TỨC:
+- Sơ tán khỏi khu vực
+- Ngắt nguồn điện nếu có thể
+- Không sử dụng lửa hoặc công tắc điện
+- Đảm bảo thông gió`;
+
+  await sendMessage(message, true);
+}
+
+/**
+ * Send an alert when risk conditions return to normal
+ * @param {Object} data - The sensor data
+ * @param {string} riskType - The type of risk that was normalized
+ */
+async function sendRiskNormalizedAlert(data, riskType) {
+  let riskTypeVietnamese = '';
+  
+  switch(riskType) {
+    case 'gas':
+      riskTypeVietnamese = 'KHÍ GAS';
+      break;
+    case 'temperature':
+      riskTypeVietnamese = 'NHIỆT ĐỘ';
+      break;
+    case 'explosion risk':
+      riskTypeVietnamese = 'NGUY CƠ CHÁY NỔ';
+      break;
+    default:
+      riskTypeVietnamese = riskType.toUpperCase();
+  }
+  
+  const message = `✅ ${riskTypeVietnamese} đã trở về mức bình thường
+
+Nồng độ gas: ${data.gas_volume}
+Nhiệt độ: ${data.temperature}°C
+Độ ẩm: ${data.humidity}%
+Vị trí: ${data.type}
+Thời gian: ${new Date().toLocaleString()}`;
 
   await sendMessage(message, false);
 }
@@ -218,17 +311,21 @@ async function sendRegularReport() {
     
     // Format the report message
     const gasStatus = lastDataPoint.gas_volume > gasThreshold 
-      ? '🚨 DANGER' 
-      : (lastDataPoint.gas_volume > gasThreshold * 0.7 ? '⚠️ WARNING' : '✅ NORMAL');
+      ? '🚨 NGUY HIỂM' 
+      : (lastDataPoint.gas_volume > gasThreshold * 0.7 ? '⚠️ CẢNH BÁO' : '✅ BÌNH THƯỜNG');
     
-    const message = `📊 Regular Status Report
+    const tempStatus = lastDataPoint.temperature > tempThreshold
+      ? '🔥 CAO'
+      : (lastDataPoint.temperature > tempThreshold * 0.9 ? '⚠️ CẢNH BÁO' : '✅ BÌNH THƯỜNG');
+    
+    const message = `📊 Báo Cáo Trạng Thái Định Kỳ
 
-Gas Level: <b>${lastDataPoint.gas_volume}</b> - ${gasStatus}
-Temperature: ${lastDataPoint.temperature}°C
-Humidity: ${lastDataPoint.humidity}%
-Location: ${lastDataPoint.type}
-Sensor Status: Online
-Last Update: ${new Date(lastDataPoint.created_at).toLocaleString()}`;
+Nồng độ Gas: <b>${lastDataPoint.gas_volume}</b> - ${gasStatus}
+Nhiệt độ: <b>${lastDataPoint.temperature}°C</b> - ${tempStatus}
+Độ ẩm: ${lastDataPoint.humidity}%
+Vị trí: ${lastDataPoint.type}
+Trạng thái cảm biến: Hoạt động
+Cập nhật lần cuối: ${new Date(lastDataPoint.created_at).toLocaleString()}`;
 
     await sendMessage(message, false);
     
@@ -243,6 +340,8 @@ initBot();
 module.exports = {
   sendMessage,
   processSensorData,
-  sendUrgentGasAlert,
+  sendGasAlert,
+  sendHighTemperatureAlert,
+  sendExplosionRiskAlert,
   sendRegularReport
 }; 
