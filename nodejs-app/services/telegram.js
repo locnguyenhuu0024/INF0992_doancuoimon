@@ -312,7 +312,7 @@ async function sendRegularReport() {
     // Format the report message
     const gasStatus = lastDataPoint.gas_volume > gasThreshold 
       ? '🚨 NGUY HIỂM' 
-      : (lastDataPoint.gas_volume > gasThreshold * 0.7 ? '⚠️ CẢNH BÁO' : '✅ BÌNH THƯỜNG');
+      : (lastDataPoint.gas_volume > gasThreshold ? '⚠️ CẢNH BÁO' : '✅ BÌNH THƯỜNG');
     
     const tempStatus = lastDataPoint.temperature > tempThreshold
       ? '🔥 CAO'
